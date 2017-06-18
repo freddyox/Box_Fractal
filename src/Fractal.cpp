@@ -1,0 +1,109 @@
+#include "../include/Fractal.hh"
+#include <cmath>
+#include <iostream>
+
+long int Fractal::fBoxN = 0;
+
+Fractal::Fractal(double x, double y, int n, double l=100.0) : fDisx(x), fDisy(y), fIterations(n) {
+  fArea = 0.0;  
+  fL = fabs(l);
+  if( fL > 0.65*x || fL > 0.65*y ){
+    fL = 150.0;
+    std::cerr << "Defined dimensions are too large, using default = 150.0..." << std::endl;
+  }
+  
+  fOrigin = sf::Vector2f(x/2.0, y/2.0);
+  fSize = sf::Vector2f(fL,fL);
+  
+  fColors.push_back( sf::Color::Red );
+  fColors.push_back( sf::Color(255, 127, 0) );
+  fColors.push_back( sf::Color(255, 255, 0) );
+  fColors.push_back( sf::Color(0, 255, 0) );
+  fColors.push_back( sf::Color(0, 0, 255) );
+  fColors.push_back( sf::Color(75, 0, 130) );
+  fColors.push_back( sf::Color(148,0,211) );
+
+  generateFractal();
+}
+
+
+void Fractal::draw( sf::RenderTarget& target, sf::RenderStates) const {
+  std::vector<sf::RectangleShape>::const_iterator fIt;
+  if(fBoxes.empty()) return;
+  
+  for(fIt=fBoxes.begin(); fIt!=fBoxes.end(); fIt++){
+    target.draw(*fIt);
+  }
+}
+
+void Fractal::generateFractal(){
+  // Need some containers to hold information:
+  // temp holds boxes per iteration
+  //std::vector<sf::RectangleShape> boxtemp;
+  std::map<int,std::vector<sf::RectangleShape> > boxtemp;
+
+  
+  // Make the initial Rectangle:
+  // This controls initial Rectangle's starting quadrant 
+  float quadx[] = {fSize.x*0.5,fSize.x*0.5,-fSize.x*0.5,-fSize.x*0.5};
+  float quady[] = {fSize.y*0.5,-fSize.y*0.5,fSize.y*0.5,-fSize.y*0.5};
+  
+  for(int quad=0; quad<4; quad++){
+    sf::RectangleShape init(sf::Vector2f(fL,fL));
+    init.setOrigin(0.5*fL,0.5*fL);
+    
+    sf::Vector2f pos_knot(quadx[quad],quady[quad]);
+    std::cout << pos_knot.x << "   " << pos_knot.y << std::endl;
+
+    init.setPosition(fOrigin + pos_knot);
+    init.setFillColor(fColors[fBoxN++]);
+  
+    fBoxes.push_back( init );
+    boxtemp[quad].push_back( init );
+
+    // Starting the Algorithm:
+    int boxnumber = 0;
+    for( unsigned int i=1; i<=fIterations; i++){
+      int nboxes = pow(2,i)/2.0; // # of boxes in current iter
+      std::cout << "Quad - " << quad << "     Iteration " << i << std::endl;
+      boxnumber = nboxes - 1;
+
+      double currl = 0.0;
+      fBoxN++;
+    
+      for( unsigned j=1; j<=nboxes; j++ ){
+	sf::Vector2f curr = boxtemp[quad][boxnumber].getPosition();
+	sf::Vector2f currsize = boxtemp[quad][boxnumber].getSize();
+
+	sf::Vector2f nextsize(currsize.x/2.0, currsize.y/2.0);
+
+	// Now we need to place two more small boxes:
+       
+	double newx = curr.x + 0.5*currsize.x + 0.5*nextsize.x;
+	double newy = curr.y - 0.5*currsize.y + 0.5*nextsize.y;
+	
+	sf::RectangleShape nextR(nextsize);
+	nextR.setOrigin(sf::Vector2f(nextsize.x*0.5,nextsize.y*0.5));
+	nextR.setPosition(sf::Vector2f(newx,newy));
+	nextR.setFillColor(fColors[fBoxN%fColors.size()]);
+
+	// Note there is only one sign change in each formula:
+	newx = curr.x - 0.5*currsize.x + 0.5*nextsize.x;
+	newy = curr.y + 0.5*currsize.y + 0.5*nextsize.y;
+	sf::RectangleShape nextL(nextsize);
+	nextL.setOrigin(sf::Vector2f(nextsize.x*0.5,nextsize.y*0.5));
+	nextL.setPosition(sf::Vector2f(newx,newy));
+	nextL.setFillColor(fColors[fBoxN%fColors.size()]);
+      
+	fBoxes.push_back(nextR);
+	boxtemp[quad].push_back(nextR);
+	fBoxes.push_back(nextL);
+	boxtemp[quad].push_back(nextL);
+
+	boxnumber++;
+      }
+    }
+  }
+    
+}
+
